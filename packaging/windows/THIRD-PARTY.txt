@@ -1,0 +1,26 @@
+论文译读使用的主要第三方组件
+
+PDFMathTranslate / PDF2zh 1.9.11，GNU Affero General Public License v3。
+https://github.com/PDFMathTranslate/PDFMathTranslate/tree/v1.9.11
+
+PyMuPDF 1.25.2 和 MuPDF 1.25.2，GNU Affero General Public License v3。
+https://github.com/pymupdf/PyMuPDF
+https://mupdf.com/
+
+BabelDOC 0.2.33，GNU Affero General Public License v3。
+https://github.com/funstory-ai/BabelDOC
+
+Levenshtein 0.27.1 和 python-Levenshtein 0.27.1，GNU GPL v2 或更高版本。
+https://github.com/rapidfuzz/Levenshtein
+
+离线英译中语言包基于 Jörg Tiedemann 和 Santhosh Thottingal 的 OPUS-MT，
+原始模型使用 Creative Commons Attribution 4.0。软件附带的
+.offline-translation-v1/translate-en_zh-1_9/README.md 保留了模型的署名。
+https://aclanthology.org/2020.eamt-1.61/
+https://github.com/argosopentech/argos-translate
+
+软件目录 source/PaperTranslationStudio-Source-1.0.0.zip 包含本工作台、
+安装器和上述 GPL / AGPL 组件的源代码归档。其他 Python 组件的许可证
+保存在 pdf2zh/build/site-packages 下相应的 .dist-info 目录中。
+Microsoft WebView2 SDK 许可位于 licenses/WebView2-LICENSE.txt。
+安装包所含微软运行库由 Microsoft 提供并单独适用其许可。

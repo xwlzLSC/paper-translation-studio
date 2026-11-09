@@ -1,0 +1,19 @@
+{
+  "name": "论文译读 · Paper Studio",
+  "short_name": "论文译读",
+  "description": "学术 PDF 双语对照精读与 AI/离线翻译工作台（支持平板与手机独立运行）",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#e2e6ef",
+  "theme_color": "#4f5bd5",
+  "icons": [
+    {
+      "src": "/static/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

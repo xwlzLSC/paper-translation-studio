@@ -1,0 +1,80 @@
+plugins {
+    id 'com.android.application' version '8.13.0'
+}
+
+def webAssets = tasks.register('syncWebAssets', Sync) {
+    from('../static') {
+        exclude 'mobile-bridge.js', 'sw.js', 'manifest.webmanifest'
+        filesMatching('index.html') {
+            filter { line ->
+                line.contains('src="/static/mobile-bridge.js"') ?
+                    '  <script src="/static/mobile-page-layout.js" defer></script>\n' + line : line
+            }
+        }
+    }
+    from('web')
+    into(layout.buildDirectory.dir('paperAssets/www'))
+}
+
+def bundledModel = providers.gradleProperty('paperBundledModel')
+def bundledAssets = layout.buildDirectory.dir('paperBundledAssets')
+if (bundledModel.isPresent()) {
+    tasks.register('syncBundledModel', Sync) {
+        into(bundledAssets.map { it.dir('models') })
+        from(bundledModel) { rename { 'Hy-MT2-1.8B-Q4_K_M.gguf' } }
+        from(providers.gradleProperty('paperBundledModelLicense'))
+    }
+}
+
+android {
+    namespace 'com.paperstudio.translator'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.paperstudio.translator'
+        minSdk 24
+        targetSdk 35
+        versionCode 227
+        versionName '2.2.7'
+        ndk {
+            abiFilters 'arm64-v8a', 'x86_64'
+            if (!bundledModel.isPresent()) abiFilters 'armeabi-v7a'
+        }
+    }
+
+    sourceSets.main {
+        manifest.srcFile 'AndroidManifest.xml'
+        java.srcDirs = ['src']
+        res.srcDirs = ['res']
+        assets.srcDir layout.buildDirectory.dir('paperAssets')
+        assets.srcDir 'packaged'
+        if (bundledModel.isPresent()) assets.srcDir bundledAssets
+        jniLibs.srcDir layout.buildDirectory.dir('precision-jni')
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    packaging {
+        resources.excludes += ['META-INF/DEPENDENCIES', 'META-INF/INDEX.LIST']
+        resources.pickFirsts += ['META-INF/LICENSE', 'META-INF/NOTICE', 'META-INF/LICENSE.txt', 'META-INF/NOTICE.txt']
+    }
+
+    androidResources {
+        noCompress += ['gguf']
+    }
+}
+
+tasks.named('preBuild') {
+    dependsOn(webAssets)
+    if (bundledModel.isPresent()) dependsOn('syncBundledModel')
+}
+
+dependencies {
+    implementation 'com.tom-roush:pdfbox-android:2.0.27.0'
+    implementation 'com.google.mlkit:text-recognition-chinese:16.0.1'
+    implementation 'com.google.mlkit:text-recognition:16.0.1'
+    implementation 'com.google.mlkit:translate:17.0.3'
+}

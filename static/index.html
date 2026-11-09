@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#4f5bd5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="description" content="本地论文翻译工作台，支持 Magpie 网关与 DeepSeek 前缀缓存加速，提供无干扰双栏同步阅读与在线校对。">
+  <title>论文译读 · Paper Studio</title>
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="/static/icon.svg">
+  <link rel="apple-touch-icon" href="/static/icon.svg">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/layout.css">
+  <script src="/static/mobile-bridge.js" defer></script>
+  <script src="/static/app.js" defer></script>
+  <script src="/static/layout.js" defer></script>
+</head>
+<body>
+  <header class="topbar" id="app-topbar">
+    <div class="brand-group">
+      <button type="button" id="sidebar-toggle" class="icon-button" aria-label="折叠或展开左侧栏" title="收起/展开侧边栏 (快捷键 [ )">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>
+      </button>
+      <div class="brand">
+        <svg viewBox="0 0 38 38" aria-hidden="true" class="mark"><rect width="38" height="38" rx="10" fill="currentColor"/><path d="M11 11.5h5.4c1.6 0 2.6.8 2.6 2v14c0-1.4-1.1-2.2-2.6-2.2H11zm16 0h-5.4c-1.6 0-2.6.8-2.6 2v14c0-1.4 1.1-2.2 2.6-2.2H27z" fill="none" stroke="white" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        <strong>论文译读</strong>
+      </div>
+    </div>
+
+    <nav id="doc-tabs" class="doc-tabs" aria-label="已打开的文献标签页"></nav>
+
+    <div class="top-actions">
+      <div class="theme-switcher" role="group" aria-label="阅读主题">
+        <button type="button" class="theme-btn active" data-theme-val="light" title="浅色纯净主题">浅色</button>
+        <button type="button" class="theme-btn" data-theme-val="sepia" title="护眼米黄主题">护眼</button>
+        <button type="button" class="theme-btn" data-theme-val="dark" title="夜间深色主题">深色</button>
+      </div>
+      <button type="button" id="settings-toggle-btn" class="ghost compact-pill" aria-controls="settings-drawer" aria-expanded="false" title="打开模型与翻译设置抽屉">
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="pill-icon"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.77 1.05 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        翻译设置
+      </button>
+      <button type="button" id="status-toggle" class="ghost compact-pill" aria-controls="connection-panel" aria-expanded="false">
+        <i class="status-dot"></i> 网关状态 <span aria-hidden="true">▾</span>
+      </button>
+      <div id="connection-panel" class="popover" hidden>
+        <div class="popover-head"><strong>本机引擎与网关状态</strong><button type="button" class="link-button" id="refresh-status">刷新检测</button></div>
+        <div id="connections" class="connections" aria-live="polite"></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="workspace" id="workspace">
+    <aside class="sidebar" id="sidebar" aria-label="文献库与翻译启动">
+      <div class="sidebar-body">
+        <section class="side-section upload-section">
+          <div class="section-title">
+            <h2>文献库</h2>
+            <span id="file-count" class="count">0</span>
+          </div>
+          <input id="file-picker" type="file" accept=".pdf,.docx,.txt,.md,.markdown,.png,.jpg,.jpeg,.webp,.tif,.tiff" multiple hidden>
+          <div class="upload-row">
+            <button type="button" id="upload-button" class="dropzone">
+              <div class="dropzone-icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4m-4 4 4-4 4 4M5 14v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5"/></svg>
+              </div>
+              <div class="dropzone-text">
+                <strong>导入文献</strong>
+                <span>PDF / Word / MD / 图片 · 支持拖拽或多选</span>
+              </div>
+            </button>
+          </div>
+          <button type="button" id="sample-link" class="link-button sample-link">打开内置双语对照示例 ↗</button>
+          <p id="upload-status" class="upload-status" role="status" hidden></p>
+          <ul id="job-list" class="job-list" aria-label="本地文献列表"></ul>
+          <p id="no-files" class="muted file-empty">暂无文献，导入后即可双栏预览。</p>
+        </section>
+      </div>
+
+      <div class="sidebar-footer">
+        <button type="button" id="model-summary-card" class="model-summary-card" aria-controls="settings-drawer" aria-expanded="false" title="点击打开右侧翻译设置抽屉">
+          <div class="summary-card-top">
+            <span class="summary-label"><i class="summary-dot" id="summary-dot"></i> <strong id="summary-provider">Magpie · 本地网关</strong></span>
+            <span class="summary-action">设置 ▸</span>
+          </div>
+          <div class="summary-card-model" id="summary-model">deepseek/deepseek-flash</div>
+          <div class="summary-card-meta" id="summary-meta">英语 → 简体中文 · 4 通道并发</div>
+        </button>
+        <button class="primary start" type="submit" form="translate-form" id="translate-button" disabled><span aria-hidden="true">✦</span> 开始翻译</button>
+        <p id="selection-note" class="field-note selection-note">请先导入或选择一份文献</p>
+      </div>
+    </aside>
+
+    <section class="reader" aria-label="文献阅读区">
+      <div class="empty" id="empty-reader">
+        <div class="hero">
+          <div class="eyebrow"><span aria-hidden="true"></span> DeepSeek 前缀缓存加速 · 极简专注阅读</div>
+          <h1>纯净、高效的<br>双语文献阅读工作台</h1>
+          <p>融合 PDFMathTranslate 版式保留引擎、Doc2X 交互式段落校对与 Zotero 7 风格无干扰阅读器。支持快捷键 <code>F</code> 一键全屏专注、工具栏自动隐藏及本机 Magpie 多模型高缓存命中并发翻译。</p>
+          <div class="hero-actions">
+            <button type="button" id="hero-upload" class="primary">导入文献 <span aria-hidden="true">↗</span></button>
+            <button type="button" id="demo-button" class="secondary">体验内置双语示例</button>
+          </div>
+        </div>
+        <div class="sample" aria-hidden="true">
+          <div class="sample-label"><span><i></i> 原版 PDF 连续流</span><span><i></i> 译文 PDF / 可编辑结构化段落</span></div>
+          <div class="sample-pair">
+            <div class="sample-page"><div class="sample-kicker">ORIGINAL</div><b>Reducing Noise in<br>a Sampled Circuit</b><div class="sample-byline"></div><div class="sample-columns"><div class="rulelines"></div><div class="rulelines"></div></div><div class="sample-figure"><svg viewBox="0 0 130 48"><path d="M16 9v30h101M17 35c12-17 26-24 48-25 15-1 35-1 48-1"/></svg></div><div class="sample-columns"><div class="rulelines short"></div><div class="rulelines short"></div></div></div>
+            <div class="sample-page translated"><div class="sample-kicker">TRANSLATED</div><b>降低采样电路<br>中的噪声</b><div class="sample-byline"></div><div class="sample-columns"><div class="rulelines"></div><div class="rulelines"></div></div><div class="sample-figure"><svg viewBox="0 0 130 48"><path d="M16 9v30h101M17 35c12-17 26-24 48-25 15-1 35-1 48-1"/></svg></div><div class="sample-columns"><div class="rulelines short"></div><div class="rulelines short"></div></div></div>
+          </div>
+          <div class="sample-caption">快捷键：<code>[</code> 折叠侧栏 · <code>T</code> 隐藏工具栏 · <code>F</code> 全屏专注模式</div>
+        </div>
+      </div>
+
+      <div id="active-reader" class="active-reader" hidden>
+        <!-- 工具栏收起时的顶部极细悬浮唤醒条 -->
+        <div id="toolbar-reveal-strip" class="toolbar-reveal-strip" hidden title="点击或悬停展开工具栏 (快捷键 T)">
+          <button type="button" id="expand-toolbar-btn" class="reveal-pill">
+            <span id="mini-doc-title">展开工具栏</span>
+            <span id="mini-page-indicator">1 / 1</span>
+            <span aria-hidden="true">▾</span>
+          </button>
+        </div>
+
+        <!-- 三段式分组极简工具栏 -->
+        <div class="toolbar" id="reader-toolbar">
+          <div class="toolbar-left">
+            <button type="button" id="outline-toggle" class="icon-button tool-btn" aria-pressed="false" title="目录大纲与缩略图">
+              <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h16"/></svg>
+            </button>
+            <div class="doc-title-inline">
+              <h1 id="document-title"></h1>
+              <span id="document-description" class="meta-badge"></span>
+              <span id="cache-badge" class="cache-badge" hidden title="当前任务大模型前缀缓存命中率"></span>
+              <span id="range-note" class="meta-badge" hidden></span>
+            </div>
+            <!-- 内联紧凑进度胶囊 -->
+            <div id="task-progress" class="inline-progress" hidden>
+              <span id="progress-message" role="status"></span>
+              <span id="progress-elapsed" hidden></span>
+              <strong id="progress-number"></strong>
+              <progress id="progress-bar" max="1" value="0"></progress>
+              <button type="button" class="secondary compact-btn" id="pause-button" hidden>暂停</button>
+              <button type="button" class="primary compact-btn" id="resume-button" hidden>继续翻译</button>
+              <button type="button" class="tiny-cancel" id="cancel-button" hidden>取消</button>
+            </div>
+          </div>
+
+          <div class="toolbar-center">
+            <div class="reader-modes" role="group" aria-label="阅读对照模式">
+              <button type="button" id="page-mode" data-mode="dual-pdf" aria-pressed="true" title="左右双栏 PDF 同步对照">双栏</button>
+              <button type="button" id="doc2x-mode" data-mode="doc2x" aria-pressed="false" disabled title="左原文 PDF + 右结构化可编辑译文 (Doc2X 模式)">PDF+解析</button>
+              <button type="button" id="text-mode" data-mode="text" aria-pressed="false" disabled title="纯文本段落对照">段落</button>
+              <button type="button" id="mono-view-mode" data-mode="mono-pdf" aria-pressed="false" disabled title="仅看译文 PDF">译文</button>
+              <button type="button" id="orig-view-mode" data-mode="orig-pdf" aria-pressed="false" title="仅看原文 PDF">原文</button>
+            </div>
+
+            <span class="tool-sep" aria-hidden="true"></span>
+
+            <div class="pages" aria-label="翻页">
+              <button type="button" id="previous-page" class="icon-button tool-btn" aria-label="上一页" title="上一页 (←)">‹</button>
+              <input type="number" id="page-number" value="1" min="1" inputmode="numeric" aria-label="当前页码">
+              <span id="page-total">/ 1</span>
+              <button type="button" id="next-page" class="icon-button tool-btn" aria-label="下一页" title="下一页 (→)">›</button>
+            </div>
+
+            <select id="zoom" title="缩放比例">
+              <option value="100">100%</option>
+              <option value="75">75%</option>
+              <option value="115">115%</option>
+              <option value="130">130%</option>
+              <option value="150">150%</option>
+              <option value="200">200%</option>
+            </select>
+
+            <button type="button" class="icon-button tool-btn" id="fit-width-btn" aria-pressed="false" aria-label="适应宽度" title="适应宽度 · 锁定横向滚动">
+              <svg viewBox="0 0 24 24" class="btn-svg"><path d="M4 8V4h4m8 0h4v4M4 16v4h4m12-4v4h-4M8 12h8"/></svg>
+            </button>
+          </div>
+
+          <div class="toolbar-right">
+            <button type="button" class="compact-btn retry-failed-btn" id="retry-failed-btn" hidden title="保留已有翻译，仅重试失败页面">
+              ↺ 重试失败页 (<span id="retry-failed-count">0</span>)
+            </button>
+
+            <button type="button" class="secondary compact-btn" id="copy-page" hidden>复制本页</button>
+
+            <button type="button" class="icon-button tool-btn" id="search-toggle-btn" aria-label="PDF 全文搜索" aria-controls="search-bar" aria-expanded="false" title="PDF 全文搜索 (Ctrl+F)">
+              <svg viewBox="0 0 24 24"><path d="M21 21l-4.35-4.35M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0z"/></svg>
+            </button>
+
+            <button type="button" class="compact-btn audit-btn" id="audit-toggle-btn" aria-controls="audit-panel" aria-expanded="false" hidden title="查看译文一致性提示">
+              <svg viewBox="0 0 24 24" aria-hidden="true" class="btn-svg"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <span id="audit-badge-text">校对</span>
+            </button>
+
+            <div class="export-dropdown" id="export-dropdown" hidden>
+              <button type="button" class="secondary compact-btn" id="export-menu-btn" title="下载双语 PDF、Word、Markdown 等文件">
+                <svg viewBox="0 0 24 24" aria-hidden="true" class="btn-svg"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                导出 <span aria-hidden="true">▾</span>
+              </button>
+              <div class="export-menu" id="export-menu" hidden>
+                <a id="dual-download" class="export-primary-item" hidden>📑 双语对照排版 PDF (.pdf)</a>
+                <a id="mono-download">📕 仅译文排版 PDF (.pdf)</a>
+                <a id="markdown-download">📄 双语对照 Markdown (.md)</a>
+                <a id="markdown-mono-download">📝 纯译文 Markdown (.md)</a>
+                <a id="html-download">🌐 独立双语对照网页 (.html)</a>
+                <a id="word-download">📘 Word 双语对照文档 (.doc)</a>
+                <div class="menu-divider"></div>
+                <a id="original-link">📎 下载原始 PDF</a>
+                <a id="source-download" hidden>📎 下载原文件</a>
+              </div>
+            </div>
+
+            <div class="more-dropdown" id="more-dropdown">
+              <button type="button" class="icon-button tool-btn" id="more-menu-btn" aria-label="更多阅读选项" aria-expanded="false" title="笔记、同步滚动、全屏专注与更多操作">
+                <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></svg>
+              </button>
+              <div class="more-menu" id="more-menu" hidden>
+                <button type="button" class="more-item" id="notes-toggle-btn" aria-haspopup="dialog">
+                  <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+                  <span>双语阅读笔记</span>
+                </button>
+                <div class="menu-divider"></div>
+                <label class="more-item check-item" id="sync-toggle-wrap" title="左右两栏同步滚动">
+                  <input type="checkbox" id="sync-scroll" checked>
+                  <span>左右两栏同步滚动</span>
+                </label>
+                <label class="more-item check-item autohide-toggle" title="向下滚动阅读时自动收起顶部工具栏">
+                  <input type="checkbox" id="autohide-toolbar">
+                  <span>滚动时自动隐藏顶栏</span>
+                </label>
+                <div class="menu-divider"></div>
+                <button type="button" class="more-item" id="focus-mode-btn">
+                  <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                  <span>全屏专注模式</span>
+                  <kbd>F</kbd>
+                </button>
+                <button type="button" class="more-item" id="collapse-toolbar-btn">
+                  <svg viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg>
+                  <span>收起顶部工具栏</span>
+                  <kbd>T</kbd>
+                </button>
+                <div class="menu-divider"></div>
+                <button type="button" class="more-item danger-item" id="delete-button">
+                  <svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V4h6v3m2 0-1 13H8L7 7m3 3v7m4-7v7"/></svg>
+                  <span>删除此文献任务</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="search-bar" class="pdf-search-bar" hidden>
+          <div class="search-input-wrap">
+            <span class="search-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M21 21l-4.35-4.35M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0z"/></svg>
+            </span>
+            <input type="search" id="search-input" aria-label="PDF 全文搜索词" placeholder="在 PDF 中查找，按 Enter 搜索" maxlength="160" autocomplete="off" spellcheck="false">
+            <span id="search-count" class="search-count" role="status"></span>
+          </div>
+          <div class="search-controls">
+            <select id="search-side" aria-label="搜索范围">
+              <option value="both">原文与译文 PDF</option>
+              <option value="original">仅原文 PDF</option>
+              <option value="translated">仅译文 PDF</option>
+            </select>
+            <button type="button" id="search-prev" class="icon-button tool-btn" aria-label="上一个匹配" title="上一个 (Shift+Enter)" disabled>▲</button>
+            <button type="button" id="search-next" class="icon-button tool-btn" aria-label="下一个匹配" title="下一个 (Enter)" disabled>▼</button>
+            <button type="button" id="search-close" class="icon-button tool-btn" aria-label="关闭搜索" title="关闭 (Esc)">✕</button>
+          </div>
+          <div id="search-results" class="search-results" aria-label="搜索结果" hidden></div>
+        </div>
+
+        <!-- 悬浮校对提示面板 -->
+        <div id="audit-panel" class="floating-audit-panel" role="region" aria-labelledby="audit-title" hidden>
+          <div class="audit-panel-header">
+            <h3 id="audit-title">译文校对提示</h3>
+            <button type="button" id="audit-close" class="icon-button tool-btn" aria-label="关闭校对">✕</button>
+          </div>
+          <div id="audit-summary-bar" class="audit-summary-bar"></div>
+          <div id="audit-issue-list" class="audit-issue-list"></div>
+        </div>
+
+        <!-- 紧凑可关闭的错误浮条 -->
+        <div id="task-error" class="task-error" role="alert" hidden></div>
+
+        <!-- 隐藏保留的兼容节点 -->
+        <div class="column-labels" id="column-labels" hidden>
+          <div id="left-col-label">原文</div>
+          <div id="right-col-label"><span id="right-col-title">译文</span></div>
+        </div>
+
+        <div class="reader-body">
+          <aside id="outline-drawer" class="outline-drawer" hidden aria-label="目录大纲与缩略图">
+            <div class="drawer-tabs">
+              <button type="button" id="tab-toc" class="active">章节目录</button>
+              <button type="button" id="tab-thumbs">缩略图</button>
+            </div>
+            <div id="toc-list" class="drawer-content"></div>
+            <div id="thumb-list" class="drawer-content thumb-grid" hidden></div>
+          </aside>
+
+          <div class="split-container" id="split-container">
+            <div id="viewer-scroll" class="viewer-scroll" tabindex="0" aria-label="双栏对照阅读区">
+              <div id="dual-stage" class="dual-stage">
+                <div class="pane left-pane" id="left-pane">
+                  <div id="original-stream" class="page-stream"></div>
+                  <div id="original-shell" class="sheet legacy-sheet" hidden><img id="original-page" alt="原文页面"><p class="image-error" hidden>原文页面加载失败。</p></div>
+                </div>
+
+                <div class="split-resizer" id="split-resizer" title="拖动调整左右分栏比例，双击恢复 50:50"></div>
+
+                <div class="pane right-pane" id="right-pane">
+                  <div id="translated-stream" class="page-stream"></div>
+                  <div id="doc2x-stream" class="doc2x-stream" hidden></div>
+                  <div id="translated-shell" class="sheet legacy-sheet" hidden>
+                    <img id="translated-page" alt="译文页面" hidden>
+                    <p class="image-error" hidden>译文页面加载失败。</p>
+                    <div class="page-placeholder" id="translated-placeholder">
+                      <strong id="placeholder-title">等待译文</strong>
+                      <p id="placeholder-note">在左侧点击开始翻译或配置模型服务。</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="text-view" class="text-view" hidden>
+                <p id="text-page-message" class="text-page-message" role="status"></p>
+                <div id="text-pairs"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 专注模式 (Zen Mode) 底部悬浮控制胶囊 -->
+          <div id="zen-hud" class="zen-hud" hidden>
+            <button type="button" id="zen-prev" class="icon-button">‹</button>
+            <span id="zen-page-info">1 / 1</span>
+            <button type="button" id="zen-next" class="icon-button">›</button>
+            <span class="zen-sep"></span>
+            <button type="button" id="zen-exit" class="secondary compact-btn">退出专注 (Esc)</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 右侧滑出式“翻译与模型设置”抽屉 -->
+  <div id="settings-backdrop" class="drawer-backdrop" hidden></div>
+  <aside id="settings-drawer" class="settings-drawer" aria-label="模型与翻译设置" hidden>
+    <header class="settings-drawer-head">
+      <div class="settings-drawer-title">
+        <h2>模型与翻译设置</h2>
+        <span class="saved-badge" id="saved-indicator" title="配置已自动保存在本地">已保存</span>
+      </div>
+      <button type="button" id="settings-close-btn" class="icon-button tool-btn" aria-label="关闭设置抽屉" title="关闭 (Esc)">✕</button>
+    </header>
+
+    <div class="settings-drawer-body">
+      <div class="settings-group" id="runtime-mode-group">
+        <div class="group-header">运行引擎模式 (手机 / 平板 / 桌面)</div>
+        <div class="runtime-mode-pills" role="group" aria-label="运行引擎模式">
+          <button type="button" class="runtime-pill active" id="runtime-local-btn" data-runtime="standalone">📱 本机独立运行 (免电脑服务端)</button>
+          <button type="button" class="runtime-pill" id="runtime-remote-btn" data-runtime="remote">💻 连接电脑后端 (满血重排)</button>
+        </div>
+        <div id="remote-server-fields" hidden>
+          <label for="remote-server-url">电脑局域网 / 远程服务端地址</label>
+          <div class="remote-url-row">
+            <input id="remote-server-url" type="url" inputmode="url" placeholder="http://192.168.1.100:8765" spellcheck="false" autocomplete="off">
+            <button type="button" id="connect-remote-btn" class="secondary compact-btn">连接</button>
+          </div>
+          <p class="field-note" id="remote-server-note">在电脑端运行 <code>python server.py --lan</code> 即可获取局域网地址。</p>
+        </div>
+        <p class="field-note" id="standalone-mode-note" hidden>当前运行在设备本地：支持免费离线/免 Key 翻译与直连大模型 API，无需电脑后台。</p>
+      </div>
+
+      <form id="translate-form">
+        <div class="settings-group">
+          <div class="group-header">服务与模型接入</div>
+          <label for="provider">接入网关 / 服务</label>
+          <select id="provider">
+            <optgroup label="免费免 Key 翻译 (手机/平板/电脑通用)">
+              <option value="offline">免费本机/公共翻译 · 免 API Key</option>
+            </optgroup>
+            <optgroup label="本地聚合网关 & 订阅直连">
+              <option value="magpie">Magpie · 本地网关</option>
+              <option value="codex">Codex · ChatGPT 订阅直连</option>
+              <option value="antigravity">Antigravity · Google 订阅直连</option>
+            </optgroup>
+            <optgroup label="主流大模型 API">
+              <option value="deepseek">DeepSeek · 深度求索</option>
+              <option value="kimi">Kimi · 月之暗面</option>
+              <option value="glm">GLM · 智谱清言</option>
+              <option value="openai">OpenAI · 官方 API</option>
+              <option value="gemini">Gemini · Google 官方 API</option>
+              <option value="siliconflow">SiliconFlow · 硅基流动</option>
+              <option value="api">自定义 · OpenAI 兼容中转 / Ollama</option>
+            </optgroup>
+          </select>
+          <p id="provider-note" class="field-note"></p>
+
+          <div id="api-fields" hidden>
+            <label for="base-url">API 地址</label>
+            <input id="base-url" type="url" inputmode="url" placeholder="https://服务地址/v1" spellcheck="false" autocomplete="off">
+            <label for="api-key">API Key <small>保存在本机</small></label>
+            <input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="填写密钥后自动持久化保存">
+          </div>
+
+          <div id="model-fields">
+            <div class="label-row">
+              <label for="model">模型 <small id="model-optional">必填</small></label>
+              <button type="button" id="fetch-models" class="link-button tiny-btn" title="查询当前 API 返回的模型列表">↻ 查询模型</button>
+            </div>
+            <select id="model-picker" class="model-picker" aria-label="快速选择可用模型" hidden>
+              <option value="">-- 点选可用模型 --</option>
+            </select>
+            <input id="model" list="model-datalist" maxlength="200" spellcheck="false" autocomplete="off" placeholder="选择上方模型或输入模型 ID">
+            <datalist id="model-datalist"></datalist>
+            <p id="model-list-note" class="field-note" role="status" hidden></p>
+          </div>
+
+          <button type="button" id="test-connection" class="secondary test-connection">测试连接</button>
+          <p id="check-note" class="field-note" role="status" hidden></p>
+        </div>
+
+        <div class="settings-group">
+          <div class="group-header">语言与并发控制</div>
+          <div class="field-pair" id="language-fields">
+            <div>
+              <label for="source-language">原文语言</label>
+              <select id="source-language">
+                <option value="en">英语 (EN)</option>
+                <option value="zh">简体中文</option>
+                <option value="ja">日语</option>
+                <option value="de">德语</option>
+                <option value="fr">法语</option>
+                <option value="ko">韩语</option>
+                <option value="es">西语</option>
+              </select>
+            </div>
+            <div>
+              <label for="target-language">译文语言</label>
+              <select id="target-language">
+                <option value="zh">简体中文</option>
+                <option value="zh-tw">繁體中文</option>
+                <option value="en">英语 (EN)</option>
+                <option value="ja">日语</option>
+                <option value="de">德语</option>
+                <option value="fr">法语</option>
+                <option value="ko">韩语</option>
+                <option value="es">西语</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-pair">
+            <div>
+              <label for="page-range">页码范围</label>
+              <input id="page-range" placeholder="全文，如 1-3,5" maxlength="100" spellcheck="false">
+            </div>
+            <div>
+              <label for="concurrency">并发通道</label>
+              <select id="concurrency" title="先预热首批次建立前缀缓存，再开启多通道并发">
+                <option value="1">1 通道</option>
+                <option value="2">2 通道</option>
+                <option value="3">3 通道</option>
+                <option value="4" selected>4 通道</option>
+                <option value="6">6 通道</option>
+                <option value="8">8 通道</option>
+              </select>
+              <p id="concurrency-note" class="field-note" hidden></p>
+            </div>
+          </div>
+          <div id="reuse-api-cache-option" hidden>
+            <label class="option-check"><input id="reuse-api-cache" type="checkbox" checked> 复用本机已有译文</label>
+            <p class="field-note">同一文献的相同正文和翻译配置可直接复用。取消勾选可重新请求译文。</p>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <div class="group-header">排版增强与术语表</div>
+          <label for="ocr" class="option-check"><input id="ocr" type="checkbox" checked> 扫描页离线 OCR 识别重排</label>
+          <label for="auto-glossary" class="option-check" title="翻译前自动扫描首页提取专业术语表并注入固定缓存前缀"><input id="auto-glossary" type="checkbox"> 自动预提取全文专业术语表 (BabelDOC)</label>
+
+          <details class="advanced-options">
+            <summary>自定义术语表 (Glossary)</summary>
+            <textarea id="glossary" rows="4" maxlength="4096" spellcheck="false" placeholder="每行一条：原文 = 译名&#10;sampling capacitor = 采样电容"></textarea>
+          </details>
+        </div>
+
+        <section class="settings-group ignore-group" aria-labelledby="ignore-title">
+          <h3 id="ignore-title" class="group-header">忽略翻译</h3>
+          <p id="ignore-hint" class="field-note">勾选要保留原文的内容。</p>
+          <div id="ignore-content" class="ignore-options" role="group" aria-labelledby="ignore-title" aria-describedby="ignore-hint">
+            <label class="ignore-option" title="保留识别到的表格、表题和表注">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11m6-11v11M3 14h18"/></svg>
+              <span>不翻译表格</span><input type="checkbox" value="tables">
+            </label>
+            <label class="ignore-option" title="保留识别到的代码块和行内代码">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 6-6 6 6 6m10-12 6 6-6 6M14 4l-4 16"/></svg>
+              <span>不翻译代码</span><input type="checkbox" value="code">
+            </label>
+            <label class="ignore-option" title="保留插图、图题和单独导入的图片。扫描 PDF 的正文仍按 OCR 设置处理。">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1.5"/><path d="m21 16-5-5L5 21"/></svg>
+              <span>不翻译图片</span><input type="checkbox" value="images">
+            </label>
+            <label class="ignore-option" title="保留识别到的参考文献章节及续页">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h6v7c0 3-2 6-6 7v-3c2-1 3-2 3-4H4zm10 0h6v7c0 3-2 6-6 7v-3c2-1 3-2 3-4h-3z"/></svg>
+              <span>不翻译参考文献</span><input type="checkbox" value="references">
+            </label>
+          </div>
+        </section>
+      </form>
+    </div>
+
+    <footer class="settings-drawer-foot">
+      <button type="button" id="settings-done-btn" class="secondary">完成设置</button>
+      <button type="submit" form="translate-form" id="drawer-translate-btn" class="primary">✦ 保存并开始翻译</button>
+    </footer>
+  </aside>
+
+  <!-- 参考文献引用即时悬浮卡 -->
+  <div id="citation-popover" class="citation-popover" role="dialog" aria-labelledby="cite-pop-title" hidden>
+    <div class="cite-pop-head">
+      <span class="cite-pop-tag" id="cite-pop-num">[1]</span>
+      <span class="cite-pop-title" id="cite-pop-title">参考文献详情</span>
+      <button type="button" class="icon-button tool-btn cite-pop-close" id="cite-pop-close" aria-label="关闭引用卡片">✕</button>
+    </div>
+    <div class="cite-pop-body" id="cite-pop-content">
+      加载中...
+    </div>
+    <div class="cite-pop-actions">
+      <button type="button" class="compact-btn secondary" id="cite-pop-copy">复制条目</button>
+    </div>
+  </div>
+
+  <!-- 双语段落划词检视条与 AI 释义 -->
+  <div id="selection-inspector" class="selection-inspector" role="toolbar" aria-label="划词学术检视条" hidden>
+    <div class="insp-actions">
+      <button type="button" class="insp-btn insp-primary" id="insp-explain-btn" title="学术背景与概念解析">
+        <svg viewBox="0 0 24 24" class="btn-svg"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7zM9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9v1z"/></svg>
+        <span>解释</span>
+      </button>
+      <button type="button" class="insp-btn" id="insp-deepseek-btn" title="在 DeepSeek 中提问 (支持网页或客户端应用)">
+        <svg viewBox="0 0 24 24" class="btn-svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+        <span>问 DeepSeek</span>
+      </button>
+      <button type="button" class="insp-btn" id="insp-scholar-btn" title="在 Google 学术中检索">
+        <svg viewBox="0 0 24 24" class="btn-svg"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/></svg>
+        <span>学术搜索</span>
+      </button>
+      <button type="button" class="insp-btn" id="insp-add-glossary-btn" title="将此术语添加到专有词库">
+        <svg viewBox="0 0 24 24" class="btn-svg"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+        <span>+术语库</span>
+      </button>
+      <button type="button" class="insp-btn" id="insp-copy-btn" title="复制选中文字">
+        <svg viewBox="0 0 24 24" class="btn-svg"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <span>复制</span>
+      </button>
+    </div>
+    <div id="insp-bubble" class="insp-bubble" hidden>
+      <div class="insp-bubble-content" id="insp-bubble-text"></div>
+      <div class="insp-bubble-foot">
+        <span class="insp-bubble-hint" id="insp-bubble-hint">AI 简明学术释义</span>
+        <button type="button" class="insp-bubble-action" id="insp-bubble-copy">复制解释</button>
+        <button type="button" class="insp-bubble-action" id="insp-bubble-close">收起</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 手机端快速对比浮标 (长按看原文，松手回译文，点击切换) -->
+  <button type="button" id="peek-toggle-fab" class="peek-toggle-fab" aria-label="原译对比" title="按住看原文 · 松手返回 · 点击切换" hidden>
+    <svg viewBox="0 0 24 24" class="peek-icon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+    <span class="peek-label" id="peek-label">原译对比</span>
+  </button>
+
+  <dialog id="glossary-dialog" class="reader-dialog glossary-dialog" aria-labelledby="glossary-title">
+    <header class="reader-dialog-head"><h2 id="glossary-title">添加自定义术语</h2></header>
+    <form id="glossary-entry-form" class="reader-dialog-body">
+      <label class="review-label" for="glossary-term">原文术语</label>
+      <input type="text" id="glossary-term" maxlength="180" required>
+      <label class="review-label" for="glossary-translation">对应译名</label>
+      <input type="text" id="glossary-translation" maxlength="180" required>
+      <div class="reader-dialog-actions">
+        <button type="button" id="glossary-cancel" class="secondary compact-btn">取消</button>
+        <button type="submit" class="primary compact-btn">保存术语</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="paragraph-dialog" class="reader-dialog" aria-labelledby="paragraph-title">
+    <header class="reader-dialog-head">
+      <div>
+        <h2 id="paragraph-title">校对译文</h2>
+        <p id="paragraph-location"></p>
+      </div>
+      <button type="button" id="paragraph-close" class="icon-button tool-btn" aria-label="关闭段落校对">✕</button>
+    </header>
+    <div class="reader-dialog-body">
+      <div class="review-columns">
+        <div><h3>原文</h3><div id="paragraph-original" class="review-excerpt"></div></div>
+        <div><h3>当前译文</h3><div id="paragraph-current" class="review-excerpt"></div></div>
+      </div>
+      <label class="review-label" for="paragraph-draft">拟用译文</label>
+      <textarea id="paragraph-draft" class="review-input" rows="5" maxlength="12000" spellcheck="false"></textarea>
+      <p id="paragraph-formula" class="review-hint" hidden>形如 <code>{v0}</code> 的标记对应原文公式。可随译文调整位置，保存时请保留编号。</p>
+      <p id="paragraph-engine" class="review-hint"></p>
+      <p id="paragraph-state" class="review-hint" role="status"></p>
+      <div class="reader-dialog-actions">
+        <button type="button" id="paragraph-retranslate" class="secondary compact-btn">重译该段</button>
+        <span class="dialog-spacer"></span>
+        <button type="button" id="paragraph-draft-save" class="secondary compact-btn" title="更新段落视图和文字版导出">保存文字稿</button>
+        <button type="button" id="paragraph-publish" class="primary compact-btn">写回 PDF</button>
+      </div>
+    </div>
+  </dialog>
+  <dialog id="notes-dialog" class="reader-dialog" aria-labelledby="notes-title">
+    <header class="reader-dialog-head">
+      <div>
+        <h2 id="notes-title">双语笔记</h2>
+        <p id="notes-document"></p>
+      </div>
+      <button type="button" id="notes-close" class="icon-button tool-btn" aria-label="关闭双语笔记">✕</button>
+    </header>
+    <div class="reader-dialog-body">
+      <div id="notes-library">
+        <div class="reader-dialog-actions">
+          <span id="notes-count" class="review-hint"></span>
+          <span class="dialog-spacer"></span>
+          <a id="notes-export" class="secondary compact-btn" download hidden>导出 Markdown</a>
+        </div>
+        <div id="notes-list" class="notes-list"></div>
+      </div>
+      <form id="note-form" hidden>
+        <p id="note-location" class="review-label"></p>
+        <div class="review-columns">
+          <div><h3>原文摘录</h3><div id="note-original" class="review-excerpt"></div></div>
+          <div><h3>译文摘录</h3><div id="note-translation" class="review-excerpt"></div></div>
+        </div>
+        <label class="review-label" for="note-comment">我的笔记</label>
+        <textarea id="note-comment" class="review-input" rows="4" maxlength="4000" placeholder="可填写阅读心得，也可直接保存双语摘录"></textarea>
+        <div class="reader-dialog-actions">
+          <button type="button" id="note-back" class="secondary compact-btn">查看笔记列表</button>
+          <span class="dialog-spacer"></span>
+          <button type="submit" id="note-save" class="primary compact-btn">保存笔记</button>
+        </div>
+      </form>
+      <p id="notes-state" class="review-hint" role="status"></p>
+    </div>
+  </dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>

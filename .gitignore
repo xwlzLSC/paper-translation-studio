@@ -1,0 +1,37 @@
+# 本机文献库、会话和下载资源
+/data/
+/output/
+/test-data/
+/tmp/
+/.layout-assets/
+/.offline-translation-*/
+/.playwright-cli/
+/pdf2zh/
+
+# Python 与 Android 构建
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.gradle/
+/android-app/build/
+local.properties
+*.apk
+*.aab
+*.exe
+*.msi
+*.nupkg
+*.gguf
+*.argosmodel
+*.onnx
+*.log
+
+# 本机配置和签名材料
+.env
+.env.*
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
