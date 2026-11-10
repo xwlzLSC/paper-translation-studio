@@ -2,6 +2,22 @@
 
 在 Windows、Android 手机和平板上翻译和精读学术文献。阅读区左侧是原文，右侧是排版译文。可以用本机翻译，也可以接入自己的大模型 API。
 
+## 界面预览
+
+### Windows 双栏阅读
+
+左侧为原文 PDF，右侧为排版译文。内置示例展示了双栏对照中的公式与图表。
+
+![Windows 双栏阅读界面，左侧英文原文，右侧中文译文，均显示公式和图表](docs/screenshots/windows-bilingual.png)
+
+### Android 段落对照与本机精译
+
+手机上可以逐段对照原文和译文，也可以在翻译设置里选择本机模型、语言、页码范围和扫描页 OCR。下图为 APK 的手机视口预览。
+
+| 段落对照 | 内置 Hy-MT2 版的翻译设置 |
+| :---: | :---: |
+| <img src="docs/screenshots/android-reader.png" width="300" alt="Android 段落视图，逐段显示英文原文和中文译文"> | <img src="docs/screenshots/android-model-settings.png" width="300" alt="Android 翻译设置，显示本机精译模型、语言、并发通道和扫描页 OCR"> |
+
 ## 功能
 
 - **双语阅读**。双栏连续滚动，可同步页码、拖动分隔线、锁定适应宽度。支持单看原文或译文、PDF 加结构化译文、双语段落和专注模式。
