@@ -217,12 +217,12 @@ function scheduleSaveSettings() {
   saveSettingsTimer = setTimeout(() => void persistSettings().catch(() => {}), 450);
 }
 
-async function refreshConnections() {
+async function refreshConnections(checkAll = true) {
   const button = $('refresh-status');
   const initial = !connection;
   const revision = configRevision;
   button.disabled = true;
-  try { connection = await request('/api/status'); }
+  try { connection = await request(mobile || checkAll ? '/api/status' : '/api/status?probe=local'); }
   catch (error) { announce(`连接状态读取失败：${error.message}`, true); }
   finally { button.disabled = false; }
   connectionRows();
@@ -1133,7 +1133,7 @@ function setupSelectionInspector() {
     const local = Object.hasOwn(localConcepts, key) ? localConcepts[key]
       : Object.values(localConcepts).find(([name]) => name === selection);
     const fallback = local ? local[0] + '。' + local[1]
-      : custom ? custom.source + ' · ' + custom.target : window.PaperStudioMobile?.lookupDict?.(selection);
+      : custom ? custom.source + ' · ' + custom.target : window.PaperStudioReader?.lookupDict(selection);
     const hint = $('insp-bubble-hint');
     inspectionBubble.hidden = false;
     $('insp-bubble-copy').disabled = true;
@@ -1145,8 +1145,7 @@ function setupSelectionInspector() {
     };
     const options = modelSettings();
     const localOnly = ['offline', 'precision'].includes(options.provider) ||
-      (usesApi(options.provider) && !options.model) ||
-      window.PaperStudioMobile?.isStandalone?.();
+      (usesApi(options.provider) && !options.model);
     if (localOnly) {
       show(fallback || '本机词库暂无这个条目。配置模型后可获取上下文解释。', '本机词库', Boolean(fallback));
       return;
@@ -2788,7 +2787,7 @@ $('test-connection').addEventListener('click', testConnection);
 for (const input of ignoreOptions) input.addEventListener('change', scheduleSaveSettings);
 $('translate-form').addEventListener('submit', submitTranslation);
 $('status-toggle').addEventListener('click', () => toggleConnections());
-$('refresh-status').addEventListener('click', refreshConnections);
+$('refresh-status').addEventListener('click', () => void refreshConnections());
 $('demo-button').addEventListener('click', openDemo);
 $('sample-link').addEventListener('click', openDemo);
 
@@ -2925,5 +2924,5 @@ setupFitWidthLock();
 setupPeekToggleFab();
 connectionRows();
 updateForm();
-void loadSavedSettings().then(() => refreshConnections());
+void loadSavedSettings().then(() => refreshConnections(false));
 void pollJobs();

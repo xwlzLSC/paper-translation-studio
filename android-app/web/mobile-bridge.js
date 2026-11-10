@@ -1615,6 +1615,7 @@
       : '每份文献最多同时处理 ' + limit + ' 页。';
     select.title = '同时处理的页数';
     modelPanel.hidden = provider !== 'precision';
+    googleNote.hidden = provider !== 'offline';
     element('reuse-api-cache-option').hidden = !presets[provider];
     const bundled = status?.bundled === true;
     modelTitle.textContent = bundled ? 'Hy-MT2-1.8B Q4 · 安装包内置' : 'Hy-MT2-1.8B Q4 模型 · 1.13 GB';
@@ -1695,7 +1696,6 @@
   window.PaperStudioMobile = {complete, progress, chooseFiles, pageImage, pageAspect, reviewSource, updateSettings, back, showCredit,
     shareQuestion:text => native('deepseekOrShare', {text}), openExternal:url => native('desktop', {url})};
   document.documentElement.classList.add('android-app');
-  if (matchMedia('(max-width: 768px)').matches) element('workspace').classList.add('sidebar-collapsed');
   const sheet = document.createElement('link');
   sheet.rel = 'stylesheet';
   sheet.href = '/static/mobile.css';
@@ -1707,37 +1707,43 @@
   element('provider').querySelector('optgroup').label = '设备端翻译';
   element('provider').querySelector('optgroup').append(new Option('本机精译 · Hy-MT2', 'precision'));
   element('auto-glossary').closest('label')?.setAttribute('hidden', '');
-  const localRuntimeButton = element('runtime-local-btn');
-  const remoteRuntimeButton = element('runtime-remote-btn');
-  const localRuntimeNote = element('standalone-mode-note');
-  const remoteRuntimeFields = element('remote-server-fields');
-  localRuntimeButton.textContent = '本机独立运行';
-  remoteRuntimeButton.textContent = '打开电脑工作台';
-  localRuntimeNote.textContent = '在当前设备管理文献和排版。可在下方选择本机翻译或 API。';
-  const privacy = document.createElement('p');
-  privacy.className = 'field-note';
-  privacy.textContent = '本机模式由 Google Translate 提供离线英译中。ML Kit 在设备上识别和翻译内容，并可能联网下载模型或发送使用指标。本机精译和 API 翻译可使用术语表。';
-  localRuntimeNote.after(privacy);
-  element('connect-remote-btn').textContent = '打开';
-  element('remote-server-note').textContent = '请在同一局域网内打开电脑已启用局域网访问的工作台。';
-  element('remote-server-url').value = localStorage.getItem(remoteKey) || '';
-  function selectRuntime(remote) {
-    localRuntimeButton.classList.toggle('active', !remote);
-    remoteRuntimeButton.classList.toggle('active', remote);
-    localRuntimeButton.setAttribute('aria-pressed', String(!remote));
-    remoteRuntimeButton.setAttribute('aria-pressed', String(remote));
-    remoteRuntimeFields.hidden = !remote;
-    localRuntimeNote.hidden = privacy.hidden = remote;
-    element('translate-form').hidden = remote;
-    element('drawer-translate-btn').hidden = remote;
-  }
-  selectRuntime(false);
-  localRuntimeButton.addEventListener('click', () => selectRuntime(false));
-  remoteRuntimeButton.addEventListener('click', () => selectRuntime(true));
-  element('connect-remote-btn').addEventListener('click', async () => {
-    const url = element('remote-server-url').value.trim();
-    try { await native('desktop', {url}); localStorage.setItem(remoteKey, url); }
-    catch (error) { window.announce(message(error), true); }
+  const googleNote = document.createElement('p');
+  googleNote.className = 'field-note';
+  googleNote.hidden = true;
+  googleNote.textContent = 'Google ML Kit 在设备上处理正文，可能联网下载语言包或发送使用指标。';
+  element('provider-note').after(googleNote);
+
+  const workbench = document.createElement('details');
+  workbench.className = 'settings-group android-workbench';
+  workbench.innerHTML = '<summary>打开电脑工作台（可选）</summary>' +
+    '<form><label for="remote-server-url">电脑工作台地址</label>' +
+    '<div class="android-workbench-url"><input id="remote-server-url" type="url" inputmode="url" ' +
+    'placeholder="http://192.168.1.100:8765" spellcheck="false" autocomplete="off" required>' +
+    '<button type="submit" class="secondary compact-btn">打开</button></div>' +
+    '<p class="field-note">可连接同一局域网内用源码版开启的工作台。将在系统浏览器打开。</p>' +
+    '<p class="field-note" role="status" hidden></p></form>';
+  element('translate-form').after(workbench);
+  const workbenchForm = workbench.querySelector('form');
+  const workbenchUrl = workbench.querySelector('input');
+  const workbenchButton = workbench.querySelector('button');
+  const workbenchStatus = workbench.querySelector('[role="status"]');
+  workbenchUrl.value = localStorage.getItem(remoteKey) || '';
+  workbenchForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (workbenchButton.disabled) return;
+    const url = workbenchUrl.value.trim();
+    workbenchButton.disabled = true;
+    workbenchStatus.hidden = false;
+    workbenchStatus.textContent = '正在打开工作台…';
+    try {
+      await native('desktop', {url});
+      localStorage.setItem(remoteKey, url);
+      workbenchStatus.textContent = '已在系统浏览器打开。';
+    } catch (error) {
+      workbenchStatus.textContent = message(error);
+    } finally {
+      workbenchButton.disabled = false;
+    }
   });
   document.querySelector('.dropzone-text span').textContent = 'PDF / Word / 文本 / 图片 · 支持多选';
   document.querySelector('.hero .eyebrow').textContent = '本机阅读 · 离线 OCR · API 直连';

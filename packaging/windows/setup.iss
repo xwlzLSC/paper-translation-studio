@@ -1,11 +1,13 @@
 #define ProjectDir AddBackslash(SourcePath) + "..\.."
 #define CacheDir ProjectDir + "\test-data\windows-packaging-cache"
+#define AppVersion "1.0.1"
 #define DesktopDir CacheDir + "\desktop-host"
 
 [Setup]
 AppId={{A867AE6A-A329-4565-AE64-5151FC552E76}
 AppName=论文译读
-AppVersion=1.0.0
+AppVersion={#AppVersion}
+VersionInfoVersion={#AppVersion}
 AppPublisher=论文译读
 AppMutex=Local\PaperTranslationStudio
 DefaultDirName={localappdata}\Programs\PaperTranslationStudio
@@ -16,7 +18,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.17763
 OutputDir=..\..\output\windows
-OutputBaseFilename=PaperTranslationStudio-Setup-1.0.0-x64
+OutputBaseFilename=PaperTranslationStudio-Setup-{#AppVersion}-x64
 SetupIconFile=paperstudio.ico
 UninstallDisplayIcon={app}\论文译读.exe
 WizardStyle=modern
@@ -44,7 +46,7 @@ Source: "{#ProjectDir}\.offline-translation-v1\*"; DestDir: "{app}\paper-transla
 Source: "{#ProjectDir}\..\pdf2zh\build\runtime\*"; DestDir: "{app}\pdf2zh\build\runtime"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#ProjectDir}\..\pdf2zh\build\site-packages\*"; DestDir: "{app}\pdf2zh\build\site-packages"; Excludes: "__pycache__,*.pyc,*.pyo,*.log"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#ProjectDir}\..\pdf2zh\build\offline_assets_*.zip"; DestDir: "{app}\pdf2zh\build"; Flags: ignoreversion
-Source: "{#ProjectDir}\output\windows\PaperTranslationStudio-Source-1.0.0.zip"; DestDir: "{app}\source"; Flags: ignoreversion
+Source: "{#ProjectDir}\output\windows\PaperTranslationStudio-Source-{#AppVersion}.zip"; DestDir: "{app}\source"; Flags: ignoreversion
 Source: "{#CacheDir}\WebView2Runtime-x64.exe"; DestDir: "{tmp}"; Check: NeedsWebView; Flags: deleteafterinstall
 Source: "{#ProjectDir}\..\pdf2zh\build\无法运行请安装vc_redist.x64.exe"; DestDir: "{tmp}"; DestName: "vc_redist.x64.exe"; Check: NeedsVCRuntime; Flags: deleteafterinstall
 

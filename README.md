@@ -31,15 +31,15 @@
 3. 在仓库目录运行 `.\start.bat`。脚本会在 Edge 或 Chrome 的应用窗口打开工作台，也可在浏览器访问 [127.0.0.1:8765](http://127.0.0.1:8765)。选择「打开内置双语对照示例」可以先体验阅读和导出。
 4. 使用 Windows 本机英译中前，先在联网时运行 `.\start.bat --install-offline` 下载语言包，再启动工作台。
 
-已构建的 Windows 安装包位于本机 `output/windows/`，安装后从开始菜单打开「论文译读」。重新构建请看 [Windows 安装包构建](packaging/windows/BUILD.md)。
+Windows 安装版 1.0.1 作为本机工作台运行。已构建的安装包位于本机 `output/windows/`，安装后从开始菜单打开「论文译读」。重新构建请看 [Windows 安装包构建](packaging/windows/BUILD.md)。
 
 ## Android 安装与连接
 
 - **标准版**。Android 7.0 或更高版本，建议使用更新的 Android System WebView。可接入 API，也可用 Google ML Kit 设备端英译中。首次翻译需下载语言包，之后正文在设备上处理。扫描页 OCR、原文校对和单页重译在「更多」菜单中。 [ML Kit 设备端翻译](https://developers.google.com/ml-kit/language/translation)
 - **内置 Hy-MT2 版**。面向 64 位设备，内置约 1.13 GB 的 Q4_K_M 权重。标准版也可以在翻译设置下载并导入同一官方 GGUF。 [Hy-MT2-1.8B-GGUF](https://huggingface.co/tencent/Hy-MT2-1.8B-GGUF)
-- **打开电脑工作台**。在可信局域网内，用 `.\start.bat --lan` 启动电脑端，然后在 APK 的翻译设置中填写电脑终端显示的地址。手机或平板会用系统浏览器打开电脑端，可使用电脑的排版引擎及已配置的服务。
+- **打开电脑工作台**。在可信局域网内，用源码版的 `.\start.bat --lan` 启动电脑端，再展开 APK 翻译设置底部的「打开电脑工作台」并填写终端显示的地址。手机或平板会用系统浏览器打开电脑端，可使用电脑的排版引擎及已配置的服务。
 
-已构建的 APK 位于本机 `output/android/`。当前源码版本为 Android **2.2.7**，文件名带 `-Offline` 的版本内置 Hy-MT2。构建与签名步骤见 [Android APK 构建](android-app/BUILD.md)。
+已构建的 APK 位于本机 `output/android/`。当前源码版本为 Android **2.2.8**，文件名带 `-Offline` 的版本内置 Hy-MT2。构建与签名步骤见 [Android APK 构建](android-app/BUILD.md)。
 
 ## 配置翻译服务
 

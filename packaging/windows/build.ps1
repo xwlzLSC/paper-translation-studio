@@ -3,6 +3,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$setup = Join-Path $PSScriptRoot 'setup.iss'
+$version = [regex]::Match([IO.File]::ReadAllText($setup), '(?m)^#define AppVersion "([0-9]+\.[0-9]+\.[0-9]+)"\r?$').Groups[1].Value
+if (-not $version) { throw '无法从 setup.iss 读取版本号。' }
 $studio = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path
 $cache = Join-Path $studio 'test-data\windows-packaging-cache'
 $desktop = Join-Path $cache 'desktop-host'
@@ -53,7 +56,15 @@ $arguments = @(
 )
 & $csc $arguments
 if ($LASTEXITCODE -ne 0) { throw '桌面窗口编译失败。' }
-& $python -X utf8 -B (Join-Path $PSScriptRoot 'make_source.py')
+& $python -X utf8 -B (Join-Path $PSScriptRoot 'make_source.py') $version
 if ($LASTEXITCODE -ne 0) { throw '源码包生成失败。' }
-& $Compiler (Join-Path $PSScriptRoot 'setup.iss')
+& $Compiler /Q $setup
 if ($LASTEXITCODE -ne 0) { throw '安装包编译失败。' }
+
+$output = Join-Path $studio 'output\windows'
+foreach ($name in @("PaperTranslationStudio-Setup-$version-x64.exe", "PaperTranslationStudio-Source-$version.zip")) {
+    $file = Join-Path $output $name
+    $hash = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
+    "$hash  $name" | Set-Content -LiteralPath ($file + '.sha256') -Encoding ascii
+    Get-Item -LiteralPath $file | Select-Object FullName, Length
+}

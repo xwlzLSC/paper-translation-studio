@@ -979,7 +979,7 @@ class Workbench:
             return self.add(example.NAME, write_example,
                             lambda p: write_example(p, translated=True), example.SEGMENTS)
 
-    def status(self):
+    def status(self, *, check_all=True):
         try:
             build = engine.discover_pdf2zh()
             has_ocr = scan.available(build)
@@ -987,10 +987,10 @@ class Workbench:
         except engine.EngineError as exc:
             has_ocr = False
             engine_status = {"ok": False, "message": str(exc)}
-        provider_status = {
-            key: providers.check_provider({"provider": key})
-            for key in ("magpie", "codex", "antigravity", providers.OFFLINE_PROVIDER)
-        }
+        keys = (providers.OFFLINE_PROVIDER,)
+        if check_all:
+            keys += ("magpie", "codex", "antigravity")
+        provider_status = {key: providers.check_provider({"provider": key}) for key in keys}
         return {
             "engine": engine_status,
             "providers": provider_status,
@@ -1050,7 +1050,7 @@ class Handler(BaseHTTPRequestHandler):
             static_routes = {
                 "/", "/index.html", "/sw.js", "/manifest.webmanifest",
                 "/static/style.css", "/static/app.js", "/static/layout.css", "/static/layout.js",
-                "/static/mobile-bridge.js", "/static/manifest.webmanifest", "/static/icon.svg", "/static/sw.js",
+                "/static/reader-interactions.js", "/static/manifest.webmanifest", "/static/icon.svg", "/static/sw.js",
             }
             if method == "GET" and path in static_routes:
                 name = "index.html" if path == "/" else path.rsplit("/", 1)[-1]
@@ -1063,7 +1063,8 @@ class Handler(BaseHTTPRequestHandler):
                 }[Path(name).suffix]
                 self.send_bytes((ROOT / "static" / name).read_bytes(), content_type + "; charset=utf-8")
             elif method == "GET" and path == "/api/status":
-                self.send_json(self.app.status())
+                check_all = parse_qs(url.query).get("probe") != ["local"]
+                self.send_json(self.app.status(check_all=check_all))
             elif method == "GET" and path == "/api/settings":
                 self.send_json(self.app.get_settings())
             elif method == "POST" and path == "/api/settings":
@@ -1437,10 +1438,11 @@ def main():
     parser = argparse.ArgumentParser(description="论文译读 · 本地 PDF 翻译工作台")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--data-dir", type=Path, default=ROOT / "data")
-    parser.add_argument("--lan", action="store_true", help="开启局域网共享模式，允许平板/手机 APK 或浏览器远程连接")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--lan", action="store_true", help="通过源码版启动局域网工作台")
+    mode.add_argument("--desktop-host", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--open", action="store_true", help="启动后在默认浏览器打开")
     parser.add_argument("--app", action="store_true", help="以独立桌面应用窗口模式启动")
-    parser.add_argument("--desktop-host", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
     bind_host = "0.0.0.0" if args.lan else "127.0.0.1"
     try:

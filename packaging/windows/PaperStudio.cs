@@ -47,8 +47,10 @@ namespace PaperTranslationStudio
     {
         private readonly WebView2 view = new WebView2();
         private readonly Label loading = new Label();
+        private readonly object backendLock = new object();
         private Process backend;
         private IntPtr processJob;
+        private bool closing;
         private Uri origin;
 
         public ReaderWindow()
@@ -89,17 +91,15 @@ namespace PaperTranslationStudio
                 Directory.CreateDirectory(data);
                 Directory.CreateDirectory(layoutCache);
 
-                var startup = Task.Run(() => StartBackend(data, layoutCache));
+                var backendStartup = Task.Run(() => StartBackend(data, layoutCache));
+                var startup = Task.WhenAll(backendStartup, PrepareView(appData));
                 if (await Task.WhenAny(startup, Task.Delay(TimeSpan.FromSeconds(45))) != startup)
-                    throw new TimeoutException("本地服务启动超时。");
-                string address = await startup;
-                origin = new Uri(address);
-                if (IsDisposed)
+                    throw new TimeoutException("论文译读启动超时。");
+                await startup;
+                if (IsDisposed || Disposing)
                     return;
 
-                var environment = await CoreWebView2Environment.CreateAsync(
-                    userDataFolder: Path.Combine(appData, "WebView2"));
-                await view.EnsureCoreWebView2Async(environment);
+                origin = new Uri(await backendStartup);
                 view.CoreWebView2.Settings.IsStatusBarEnabled = false;
                 view.CoreWebView2.NavigationStarting += OnNavigationStarting;
                 view.CoreWebView2.NewWindowRequested += OnNewWindowRequested;
@@ -118,6 +118,14 @@ namespace PaperTranslationStudio
                     Close();
                 }
             }
+        }
+
+        private async Task PrepareView(string appData)
+        {
+            var environment = await CoreWebView2Environment.CreateAsync(
+                userDataFolder: Path.Combine(appData, "WebView2"));
+            if (!IsDisposed && !Disposing)
+                await view.EnsureCoreWebView2Async(environment);
         }
 
         private string StartBackend(string data, string layoutCache)
@@ -150,12 +158,20 @@ namespace PaperTranslationStudio
             start.EnvironmentVariables["PYTHONUTF8"] = "1";
             start.EnvironmentVariables["PDF2ZH_HOME"] = appRoot;
             start.EnvironmentVariables["PAPER_STUDIO_LAYOUT_CACHE"] = Path.GetFullPath(layoutCache);
-            backend = Process.Start(start);
-            processJob = Native.AttachToJob(backend);
-            backend.ErrorDataReceived += (sender, args) => { };
-            backend.BeginErrorReadLine();
+            Process process;
+            lock (backendLock)
+            {
+                if (closing)
+                    throw new OperationCanceledException();
+                backend = process = Process.Start(start);
+                if (process == null)
+                    throw new InvalidOperationException("无法启动本地服务。");
+                processJob = Native.AttachToJob(process);
+                process.ErrorDataReceived += (sender, args) => { };
+                process.BeginErrorReadLine();
+            }
 
-            string line = backend.StandardOutput.ReadLine();
+            string line = process.StandardOutput.ReadLine();
             const string prefix = "PAPER_STUDIO_URL=";
             Uri address;
             if (line == null || !line.StartsWith(prefix, StringComparison.Ordinal)
@@ -221,25 +237,32 @@ namespace PaperTranslationStudio
 
         private void CloseBackend(object sender, FormClosedEventArgs args)
         {
-            if (backend != null)
+            Process process;
+            IntPtr job;
+            lock (backendLock)
+            {
+                closing = true;
+                process = backend;
+                backend = null;
+                job = processJob;
+                processJob = IntPtr.Zero;
+            }
+
+            if (process != null)
             {
                 try
                 {
-                    backend.StandardInput.Close();
-                    if (!backend.HasExited && !backend.WaitForExit(2000))
-                        backend.Kill();
+                    process.StandardInput.Close();
+                    if (!process.HasExited && !process.WaitForExit(2000))
+                        process.Kill();
                 }
                 catch (InvalidOperationException) { }
                 catch (IOException) { }
                 catch (Win32Exception) { }
-                backend.Dispose();
-                backend = null;
+                process.Dispose();
             }
-            if (processJob != IntPtr.Zero)
-            {
-                Native.CloseHandle(processJob);
-                processJob = IntPtr.Zero;
-            }
+            if (job != IntPtr.Zero)
+                Native.CloseHandle(job);
         }
     }
 

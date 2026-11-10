@@ -2,6 +2,7 @@
 
 from hashlib import file_digest
 from pathlib import Path
+import re
 import sys
 from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
@@ -9,7 +10,7 @@ from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
 HERE = Path(__file__).resolve().parent
 STUDIO = HERE.parent.parent
 CACHE = STUDIO / "test-data" / "windows-packaging-cache"
-DESTINATION = STUDIO / "output" / "windows" / "PaperTranslationStudio-Source-1.0.0.zip"
+OUTPUT = STUDIO / "output" / "windows"
 SOURCES = {
     "pymupdf-1.25.2.tar.gz": "9ea88ff1b3ccb359620f106a6fd5ba6877d959d21d78272052c3496ceede6eec",
     "pdf2zh-1.9.11.tar.gz": "8135d3d0b76d2416437b2245285dfe6acf576723e5219889b4a4960b267f4cb4",
@@ -20,8 +21,11 @@ SOURCES = {
 }
 
 
-def main():
-    DESTINATION.parent.mkdir(parents=True, exist_ok=True)
+def main(version):
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
+        raise ValueError("请从 Windows build.ps1 构建，以使用安装器版本号。")
+    destination = OUTPUT / f"PaperTranslationStudio-Source-{version}.zip"
+    destination.parent.mkdir(parents=True, exist_ok=True)
     for name, expected in SOURCES.items():
         path = CACHE / name
         if not path.is_file():
@@ -31,7 +35,7 @@ def main():
                 if file_digest(source, "sha256").hexdigest() != expected:
                     raise ValueError(f"源码包 {name} 校验失败。")
 
-    with ZipFile(DESTINATION, "w", allowZip64=True) as output:
+    with ZipFile(destination, "w", allowZip64=True) as output:
         included = [*STUDIO.glob("*.py"), STUDIO / "README.md", STUDIO / "THIRD_PARTY.md", STUDIO / "start.bat"]
         included += [path for path in (STUDIO / "static").rglob("*") if path.is_file()]
         included += [path for path in HERE.rglob("*") if path.is_file() and path.suffix.lower() in
@@ -43,11 +47,11 @@ def main():
             output.write(path, Path("bundled-pdf2zh") / path.relative_to(installed_pdf2zh), ZIP_DEFLATED)
         for name in SOURCES:
             output.write(CACHE / name, Path("upstream-sources") / name, ZIP_STORED)
-    print(f"已生成源码包：{DESTINATION}")
+    print(f"已生成源码包：{destination}")
 
 
 if __name__ == "__main__":
     try:
-        main()
+        main(sys.argv[1] if len(sys.argv) == 2 else "")
     except (OSError, ValueError) as exc:
         sys.exit(str(exc))

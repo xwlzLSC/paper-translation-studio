@@ -1,12 +1,12 @@
 'use strict';
 
-const CACHE_NAME = 'paper-studio-shell-v2';
+const CACHE_NAME = 'paper-studio-shell-v3';
 const SHELL_ASSETS = [
   '/',
   '/index.html',
   '/static/style.css',
   '/static/layout.css',
-  '/static/mobile-bridge.js',
+  '/static/reader-interactions.js',
   '/static/app.js',
   '/static/layout.js',
   '/static/icon.svg',

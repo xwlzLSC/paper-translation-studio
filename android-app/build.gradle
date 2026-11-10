@@ -4,11 +4,12 @@ plugins {
 
 def webAssets = tasks.register('syncWebAssets', Sync) {
     from('../static') {
-        exclude 'mobile-bridge.js', 'sw.js', 'manifest.webmanifest'
+        exclude 'sw.js', 'manifest.webmanifest'
         filesMatching('index.html') {
             filter { line ->
-                line.contains('src="/static/mobile-bridge.js"') ?
-                    '  <script src="/static/mobile-page-layout.js" defer></script>\n' + line : line
+                line.contains('src="/static/reader-interactions.js"') ?
+                    '  <script src="/static/mobile-page-layout.js" defer></script>\n' +
+                    '  <script src="/static/mobile-bridge.js" defer></script>\n' + line : line
             }
         }
     }
@@ -34,8 +35,8 @@ android {
         applicationId 'com.paperstudio.translator'
         minSdk 24
         targetSdk 35
-        versionCode 227
-        versionName '2.2.7'
+        versionCode 228
+        versionName '2.2.8'
         ndk {
             abiFilters 'arm64-v8a', 'x86_64'
             if (!bundledModel.isPresent()) abiFilters 'armeabi-v7a'

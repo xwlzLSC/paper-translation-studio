@@ -24,4 +24,6 @@
 .\packaging\windows\build.ps1 -Compiler 'C:\Program Files\Inno Setup 7\ISCC.exe'
 ```
 
-`output/windows/` 将生成 `PaperTranslationStudio-Setup-1.0.0-x64.exe` 和 `PaperTranslationStudio-Source-1.0.0.zip`。安装器包含工作台、PDF2zh 便携引擎、离线语言包、运行库及组件许可。安装后，文献与设置位于 `%LOCALAPPDATA%\PaperTranslationStudio\data`。
+`output/windows/` 将生成 `PaperTranslationStudio-Setup-1.0.1-x64.exe` 和 `PaperTranslationStudio-Source-1.0.1.zip`。安装器包含工作台、PDF2zh 便携引擎、离线语言包、运行库及组件许可。安装后，文献与设置位于 `%LOCALAPPDATA%\PaperTranslationStudio\data`。
+
+安装器版本由 `setup.iss` 的 `AppVersion` 定义。构建时为 EXE 和源码归档同时生成 SHA-256 校验文件。

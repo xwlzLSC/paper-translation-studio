@@ -111,3 +111,17 @@
     grid-template-columns: minmax(0, calc(var(--split-left, 50%) - 3px)) 6px minmax(0, 1fr);
   }
 }
+
+.android-workbench > summary {
+  padding-block: 7px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.android-workbench[open] > summary { margin-bottom: 4px; }
+.android-workbench-url {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+.android-workbench-url input { min-width: 0; }

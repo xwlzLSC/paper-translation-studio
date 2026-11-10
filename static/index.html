@@ -6,14 +6,14 @@
   <meta name="theme-color" content="#4f5bd5">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="description" content="本地论文翻译工作台，支持 Magpie 网关与 DeepSeek 前缀缓存加速，提供无干扰双栏同步阅读与在线校对。">
+  <meta name="description" content="本地学术文献翻译工作台，提供双栏同步阅读、版面译文和段落校对。">
   <title>论文译读 · Paper Studio</title>
   <link rel="manifest" href="/static/manifest.webmanifest">
   <link rel="icon" type="image/svg+xml" href="/static/icon.svg">
   <link rel="apple-touch-icon" href="/static/icon.svg">
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/layout.css">
-  <script src="/static/mobile-bridge.js" defer></script>
+  <script src="/static/reader-interactions.js" defer></script>
   <script src="/static/app.js" defer></script>
   <script src="/static/layout.js" defer></script>
 </head>
@@ -358,30 +358,13 @@
     </header>
 
     <div class="settings-drawer-body">
-      <div class="settings-group" id="runtime-mode-group">
-        <div class="group-header">运行引擎模式 (手机 / 平板 / 桌面)</div>
-        <div class="runtime-mode-pills" role="group" aria-label="运行引擎模式">
-          <button type="button" class="runtime-pill active" id="runtime-local-btn" data-runtime="standalone">📱 本机独立运行 (免电脑服务端)</button>
-          <button type="button" class="runtime-pill" id="runtime-remote-btn" data-runtime="remote">💻 连接电脑后端 (满血重排)</button>
-        </div>
-        <div id="remote-server-fields" hidden>
-          <label for="remote-server-url">电脑局域网 / 远程服务端地址</label>
-          <div class="remote-url-row">
-            <input id="remote-server-url" type="url" inputmode="url" placeholder="http://192.168.1.100:8765" spellcheck="false" autocomplete="off">
-            <button type="button" id="connect-remote-btn" class="secondary compact-btn">连接</button>
-          </div>
-          <p class="field-note" id="remote-server-note">在电脑端运行 <code>python server.py --lan</code> 即可获取局域网地址。</p>
-        </div>
-        <p class="field-note" id="standalone-mode-note" hidden>当前运行在设备本地：支持免费离线/免 Key 翻译与直连大模型 API，无需电脑后台。</p>
-      </div>
-
       <form id="translate-form">
         <div class="settings-group">
           <div class="group-header">服务与模型接入</div>
           <label for="provider">接入网关 / 服务</label>
           <select id="provider">
-            <optgroup label="免费免 Key 翻译 (手机/平板/电脑通用)">
-              <option value="offline">免费本机/公共翻译 · 免 API Key</option>
+            <optgroup label="本机翻译">
+              <option value="offline">本机离线 · 英译中</option>
             </optgroup>
             <optgroup label="本地聚合网关 & 订阅直连">
               <option value="magpie">Magpie · 本地网关</option>
